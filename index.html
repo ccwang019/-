@@ -3,368 +3,351 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>台灣棒球知識大富翁 - 華語學習版</title>
+    <title>台灣棒球大富翁 - 拼音競技版</title>
     <style>
         :root {
-            --primary-bg: #1a2a3a;
+            --primary-bg: #0e1a25;
             --tile-bg: #ffffff;
-            --text-dark: #333;
-            --money-color: #f1c40f;
-            --team-color: #e74c3c;
-            /* 球隊色系 */
-            --color-dragons: #ff0000; /* 味全龍 */
-            --color-lions: #ff8c00;   /* 統一獅 */
-            --color-brothers: #ffe600;/* 中信兄弟 */
-            --color-monkeys: #800000; /* 樂天桃猿 */
-            --color-guardians: #004a9c;/* 富邦悍將 */
+            --gold: #f1c40f;
+            --p1-color: #e74c3c;
+            --p2-color: #3498db;
+            --p3-color: #2ecc71;
+            --p4-color: #9b59b6;
         }
 
         body {
-            font-family: 'PingFang TC', 'Microsoft JhengHei', sans-serif;
+            font-family: 'PingFang TC', sans-serif;
             background-color: var(--primary-bg);
             color: white;
             margin: 0;
             display: flex;
             flex-direction: column;
             align-items: center;
-            min-height: 100vh;
         }
 
-        /* 頂部狀態欄 */
-        #status-bar {
+        /* 頂部狀態欄：四人資訊 */
+        #scoreboard {
             width: 100%;
-            background: rgba(0,0,0,0.8);
-            padding: 15px;
-            display: flex;
-            justify-content: space-around;
-            position: sticky;
-            top: 0;
-            z-index: 100;
-            border-bottom: 3px solid var(--money-color);
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            background: rgba(0,0,0,0.9);
+            padding: 10px 0;
+            border-bottom: 2px solid var(--gold);
         }
 
-        .stat-item { font-size: 1.2rem; font-weight: bold; }
-        .stat-item span { color: var(--money-color); }
+        .player-info {
+            text-align: center;
+            font-size: 0.8rem;
+            padding: 5px;
+            border-right: 1px solid #444;
+        }
+        .active-player { background: #333; box-shadow: inset 0 0 10px var(--gold); }
 
-        /* 遊戲地圖容器 */
-        #game-container {
+        /* 拼音樣式 */
+        ruby { ruby-align: center; }
+        rt { color: #f39c12; font-size: 0.6rem; }
+
+        /* 遊戲地圖 */
+        #game-board {
             position: relative;
-            width: 90vw;
-            max-width: 800px;
-            height: 90vw;
-            max-height: 800px;
-            margin: 20px auto;
+            width: 95vw;
+            max-width: 600px;
+            height: 95vw;
+            max-height: 600px;
+            margin: 20px;
             display: grid;
             grid-template-columns: repeat(5, 1fr);
             grid-template-rows: repeat(5, 1fr);
-            gap: 5px;
+            gap: 4px;
         }
 
         .tile {
-            background: var(--tile-bg);
-            color: var(--text-dark);
-            border-radius: 8px;
+            background: white;
+            color: #333;
+            border-radius: 4px;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            font-size: 0.8rem;
+            font-size: 0.7rem;
             font-weight: bold;
-            text-align: center;
-            position: relative;
-            transition: transform 0.2s;
-            border: 2px solid transparent;
+            border: 2px solid #ccc;
         }
 
-        .tile i { font-size: 1.5rem; margin-bottom: 5px; }
+        /* 中央卡牌區 */
+        #center-area {
+            grid-column: 2 / 5;
+            grid-row: 2 / 5;
+            background: rgba(255,255,255,0.1);
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            position: relative;
+        }
 
-        /* 棋子樣式 */
-        #player {
-            width: 40px;
-            height: 40px;
-            background: #2ecc71;
-            border: 3px solid white;
+        .card-stack {
+            width: 60px;
+            height: 90px;
+            border-radius: 5px;
+            border: 2px solid white;
+            display: flex;
+            align-items: center;
+            text-align: center;
+            font-size: 0.8rem;
+            cursor: pointer;
+            box-shadow: 3px 3px 0px #666;
+        }
+        .chance-stack { background: #ff7675; color: white; }
+        .fate-stack { background: #74b9ff; color: white; }
+
+        /* 棋子 */
+        .p-marker {
+            width: 18px;
+            height: 18px;
             border-radius: 50%;
             position: absolute;
-            z-index: 50;
-            transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-            box-shadow: 0 0 15px rgba(46, 204, 113, 0.8);
+            z-index: 100;
+            transition: all 0.4s ease;
+            border: 2px solid white;
         }
 
-        /* 彈窗樣式 */
+        /* 彈窗 */
         .modal {
             display: none;
             position: fixed;
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            width: 85%;
-            max-width: 500px;
+            width: 90%;
+            max-width: 450px;
             background: white;
             color: #333;
-            padding: 25px;
-            border-radius: 15px;
-            z-index: 1000;
-            box-shadow: 0 0 30px rgba(0,0,0,0.5);
+            padding: 20px;
+            border-radius: 12px;
+            z-index: 2000;
         }
 
         .overlay {
             display: none;
             position: fixed;
             top:0; left:0; width:100%; height:100%;
-            background: rgba(0,0,0,0.7);
-            z-index: 999;
+            background: rgba(0,0,0,0.85);
+            z-index: 1999;
         }
 
-        .quiz-option {
-            display: block;
-            width: 100%;
-            padding: 10px;
-            margin: 10px 0;
-            border: 1px solid #ccc;
+        button {
+            padding: 10px 20px;
             border-radius: 5px;
-            cursor: pointer;
-            text-align: left;
-        }
-
-        .quiz-option:hover { background: #f0f0f0; }
-
-        #dice-btn {
-            padding: 15px 40px;
-            font-size: 1.5rem;
-            background: var(--money-color);
             border: none;
-            border-radius: 30px;
             cursor: pointer;
             font-weight: bold;
-            margin: 20px;
+        }
+        
+        .opt-btn {
+            display: block; width: 100%; margin: 8px 0;
+            background: #f1f2f6; text-align: left;
         }
 
-        #dice-btn:disabled { background: #7f8c8d; }
-
-        /* 球隊專屬樣式 */
-        .dragons { border-color: var(--color-dragons) !important; color: var(--color-dragons); }
-        .lions { border-color: var(--color-lions) !important; color: var(--color-lions); }
-        .brothers { border-color: var(--color-brothers) !important; color: var(--color-brothers); }
-        .monkeys { border-color: var(--color-monkeys) !important; color: var(--color-monkeys); }
-        .guardians { border-color: var(--color-guardians) !important; color: var(--color-guardians); }
+        #roll-btn {
+            background: var(--gold);
+            font-size: 1.2rem;
+            margin-bottom: 20px;
+        }
     </style>
 </head>
 <body>
 
-<div id="status-bar">
-    <div class="stat-item">資金: <span id="money">1000</span></div>
-    <div class="stat-item">球員: <span id="players-count">0</span></div>
-    <div class="stat-item">啦啦隊: <span id="cheers-count">0</span></div>
-</div>
+<div id="scoreboard">
+    </div>
 
-<div id="game-container">
-    <div id="player"></div>
-</div>
+<div id="game-board">
+    <div id="center-area">
+        <div class="card-stack chance-stack"><ruby>機會<rt>Jīhuì</rt></ruby><br>CHANCE</div>
+        <div class="card-stack fate-stack"><ruby>命運<rt>Mìngyùn</rt></ruby><br>FATE</div>
+    </div>
+    </div>
 
-<button id="dice-btn" onclick="rollDice()">投球 (擲骰子)</button>
+<div id="current-turn-info" style="margin: 10px; font-size: 1.2rem;">
+    輪到：<span id="turn-name">玩家 1</span>
+</div>
+<button id="roll-btn" onclick="takeTurn()">投球 (擲骰子)</button>
 
 <div class="overlay" id="overlay"></div>
-
 <div class="modal" id="modal">
-    <h2 id="modal-title">標題</h2>
-    <div id="modal-content">內容</div>
-    <div id="quiz-container"></div>
-    <button id="close-btn" style="display:none; margin-top:15px;" onclick="closeModal()">關閉</button>
+    <h3 id="m-title"></h3>
+    <div id="m-content"></div>
+    <div id="m-quiz"></div>
+    <button id="m-close" style="display:none; background:#ccc;" onclick="closeModal()">關閉 (Guānbì)</button>
 </div>
 
 <script>
-    // --- 遊戲資料設定 ---
-    const GAME_DATA = {
-        tiles: [
-            { id: 0, name: "起點", type: "start", icon: "🏠" },
-            { id: 1, name: "天母球場", type: "stadium", team: "dragons", icon: "🐉" },
-            { id: 2, name: "選秀會", type: "draft", icon: "🏆" },
-            { id: 3, name: "突發事件", type: "event", icon: "❓" },
-            { id: 4, name: "新莊球場", type: "stadium", team: "guardians", icon: "🛡️" },
-            { id: 5, name: "自由球員", type: "fa", icon: "💸" },
-            { id: 6, name: "桃園球場", type: "stadium", team: "monkeys", icon: "🐒" },
-            { id: 7, name: "突發事件", type: "event", icon: "❓" },
-            { id: 8, name: "洲際球場", type: "stadium", team: "brothers", icon: "🐘" },
-            { id: 9, name: "選秀會", type: "draft", icon: "🏆" },
-            { id: 10, name: "台南球場", type: "stadium", team: "lions", icon: "🦁" },
-            { id: 11, name: "突發事件", type: "event", icon: "❓" },
-            { id: 12, name: "自由球員", type: "fa", icon: "💸" },
-            { id: 13, name: "澄清湖", type: "stadium", team: "dragons", icon: "⚾" },
-            { id: 14, name: "轉播金", type: "income", icon: "💰" },
-            { id: 15, name: "突發事件", type: "event", icon: "❓" }
-        ],
-        quizzes: [
-            {
-                type: "term",
-                q: "當投手投出的球不小心擊中打者身體時，這稱為？",
-                options: ["觸身球", "全壘打", "變速球", "盜壘成功"],
-                ans: 0,
-                reward: { type: 'player', name: '本土投手' }
-            },
-            {
-                type: "cloze",
-                q: "這名洋將球速極快，___控球極為精準，是球隊奪冠的關鍵。",
-                options: ["反而", "不但...而且", "雖然", "可是"],
-                ans: 1,
-                reward: { type: 'player', name: '強力洋投' }
-            },
-            {
-                type: "summary",
-                q: "將標題「中信兄弟隊在今天的比賽中雖然一度落後五分，但最後靠著連續的安打成功反敗為勝」簡寫，何者最精鍊？",
-                options: ["兄弟五分落後逆轉勝", "今天比賽兄弟打安打", "兄弟隊落後五分", "落後五分後兄弟隊贏了"],
-                ans: 0,
-                reward: { type: 'cheer', name: '人氣啦啦隊' }
-            }
-        ],
-        events: [
-            { title: "應援曲爆紅", desc: "洗腦旋律讓球迷大增！資金增加 300", money: 300 },
-            { title: "洋將受傷", desc: "主力球員需要休養，支付醫療費 200", money: -200 },
-            { title: "全壘打大賽", desc: "獲得額外獎金 150", money: 150 }
-        ]
-    };
+    // --- 拼音化資料 ---
+    const TILES = [
+        { name: "起點", type: "start", pinyin: "Qǐdiǎn" },
+        { name: "天母球場", type: "stadium", pinyin: "Tiānmǔ" },
+        { name: "機會", type: "chance", pinyin: "Jīhuì" },
+        { name: "新莊球場", type: "stadium", pinyin: "Xīnzhuāng" },
+        { name: "自由球員", type: "fa", pinyin: "Zìyóu Qiúyuán" },
+        { name: "桃園球場", type: "stadium", pinyin: "Táoyuán" },
+        { name: "命運", type: "fate", pinyin: "Mìngyùn" },
+        { name: "洲際球場", type: "stadium", pinyin: "Zhōujì" },
+        { name: "選秀會", type: "draft", pinyin: "Xuǎnxiùhuì" },
+        { name: "台南球場", type: "stadium", pinyin: "Táinán" },
+        { name: "機會", type: "chance", pinyin: "Jīhuì" },
+        { name: "澄清湖", type: "stadium", pinyin: "Chéngqīnghú" },
+        { name: "命運", type: "fate", pinyin: "Mìngyùn" },
+        { name: "轉播金", type: "income", pinyin: "Zhuǎnbōjīn" },
+        { name: "自由球員", type: "fa", pinyin: "Zìyóu Qiúyuán" },
+        { name: "選秀會", type: "draft", pinyin: "Xuǎnxiùhuì" }
+    ];
 
-    // --- 遊戲狀態 ---
-    let playerPos = 0;
-    let money = 1000;
-    let players = [];
-    let cheers = [];
+    const QUIZZES = [
+        {
+            q: "「<ruby>團結<rt>tuánjié</rt></ruby>」的意思是什麼？",
+            options: ["一個人努力", "大家心連心一起努力", "放棄比賽"],
+            ans: 1
+        },
+        {
+            q: "「這場比賽兩隊氣氛緊張。」這裡的「<ruby>氣氛<rt>qìfēn</rt></ruby>」是指？",
+            options: ["空氣品質", "心情和環境狀態", "球員的衣服"],
+            ans: 1
+        }
+    ];
 
-    // --- 初始化地圖 ---
-    function initMap() {
-        const container = document.getElementById('game-container');
-        // 大富翁 5x5 中間留空的邏輯
-        const tileOrder = [0, 1, 2, 3, 4, 15, null, null, null, 5, 14, null, null, null, 6, 13, 12, 11, 10, 9];
-        // 為了簡化這裡改用 4x4 環狀或自定義座標，此處採用線性生成並定位
-        GAME_DATA.tiles.forEach((tile, index) => {
-            const el = document.createElement('div');
-            el.className = `tile ${tile.team || ''}`;
-            el.innerHTML = `<i>${tile.icon}</i>${tile.name}`;
-            el.id = `tile-${index}`;
+    const CARDS = [
+        { title: "全壘打 (Quánlěidǎ)", desc: "獲得獎金 500！", money: 500 },
+        { title: "失誤 (Shīwù)", desc: "守備失誤，罰款 200。", money: -200 }
+    ];
+
+    // --- 玩家狀態 ---
+    let players = [
+        { id: 1, pos: 0, money: 1000, team: [], color: 'var(--p1-color)' },
+        { id: 2, pos: 0, money: 1000, team: [], color: 'var(--p2-color)' },
+        { id: 3, pos: 0, money: 1000, team: [], color: 'var(--p3-color)' },
+        { id: 4, pos: 0, money: 1000, team: [], color: 'var(--p4-color)' }
+    ];
+    let turn = 0; // 0 to 3
+
+    function init() {
+        const board = document.getElementById('game-board');
+        // 渲染地圖
+        TILES.forEach((t, i) => {
+            const tileEl = document.createElement('div');
+            tileEl.className = 'tile';
+            tileEl.id = `t-${i}`;
+            tileEl.innerHTML = `<ruby>${t.name}<rt>${t.pinyin}</rt></ruby>`;
             
-            // 簡單定位邏輯 (環形)
-            let row, col;
-            if(index < 5) { row = 1; col = index + 1; }
-            else if(index < 8) { row = index - 3; col = 5; }
-            else if(index < 12) { row = 5; col = 13 - index; }
-            else { row = 17 - index; col = 1; }
-
-            el.style.gridRow = row;
-            el.style.gridColumn = col;
-            container.appendChild(el);
+            // 5x5 地圖定位
+            let r, c;
+            if(i<5) { r=1; c=i+1; }
+            else if(i<8) { r=i-3; c=5; }
+            else if(i<12) { r=5; c=13-i; }
+            else { r=17-i; c=1; }
+            tileEl.style.gridRow = r; tileEl.style.gridColumn = c;
+            board.appendChild(tileEl);
         });
-        updatePlayerUI();
+
+        // 渲染棋子
+        players.forEach(p => {
+            const m = document.createElement('div');
+            m.className = 'p-marker';
+            m.id = `p-mark-${p.id}`;
+            m.style.backgroundColor = p.color;
+            board.appendChild(m);
+        });
+
+        updateUI();
     }
 
-    // --- 遊戲動作 ---
-    function rollDice() {
+    function updateUI() {
+        // 更新分數板
+        const score = document.getElementById('scoreboard');
+        score.innerHTML = players.map((p, i) => `
+            <div class="player-info ${turn === i ? 'active-player' : ''}">
+                <b style="color:${p.color}">P${p.id}</b><br>
+                $${p.money}<br>陣容:${p.team.length}
+            </div>
+        `).join('');
+
+        document.getElementById('turn-name').innerText = `玩家 ${turn + 1}`;
+        document.getElementById('turn-name').style.color = players[turn].color;
+
+        // 更新棋子位置
+        players.forEach(p => {
+            const tile = document.getElementById(`t-${p.pos}`);
+            const marker = document.getElementById(`p-mark-${p.id}`);
+            // 稍微偏移避免重疊
+            const offset = (p.id - 1) * 5;
+            marker.style.top = (tile.offsetTop + 5 + offset) + 'px';
+            marker.style.left = (tile.offsetLeft + 5 + offset) + 'px';
+        });
+    }
+
+    function takeTurn() {
         const steps = Math.floor(Math.random() * 6) + 1;
-        document.getElementById('dice-btn').disabled = true;
+        const p = players[turn];
+        p.pos = (p.pos + steps) % TILES.length;
         
-        let count = 0;
-        const timer = setInterval(() => {
-            playerPos = (playerPos + 1) % GAME_DATA.tiles.length;
-            updatePlayerUI();
-            count++;
-            if(count >= steps) {
-                clearInterval(timer);
-                handleLanding();
-                document.getElementById('dice-btn').disabled = false;
-            }
-        }, 300);
+        updateUI();
+        handleTile(p);
     }
 
-    function updatePlayerUI() {
-        const currentTile = document.getElementById(`tile-${playerPos}`);
-        const pMarker = document.getElementById('player');
-        const rect = currentTile.getBoundingClientRect();
-        const containerRect = document.getElementById('game-container').getBoundingClientRect();
+    function handleTile(p) {
+        const tile = TILES[p.pos];
+        const m = document.getElementById('modal');
+        const over = document.getElementById('overlay');
+        document.getElementById('m-title').innerHTML = `<ruby>${tile.name}<rt>${tile.pinyin}</rt></ruby>`;
+        const content = document.getElementById('m-content');
+        const quizBox = document.getElementById('m-quiz');
+        quizBox.innerHTML = "";
         
-        pMarker.style.top = (currentTile.offsetTop + 10) + 'px';
-        pMarker.style.left = (currentTile.offsetLeft + 10) + 'px';
-        
-        document.getElementById('money').innerText = money;
-        document.getElementById('players-count').innerText = players.length;
-        document.getElementById('cheers-count').innerText = cheers.length;
-    }
-
-    function handleLanding() {
-        const tile = GAME_DATA.tiles[playerPos];
-        const modal = document.getElementById('modal');
-        const overlay = document.getElementById('overlay');
-        const title = document.getElementById('modal-title');
-        const content = document.getElementById('modal-content');
-        const quizContainer = document.getElementById('quiz-container');
-        
-        title.innerText = tile.name;
-        content.innerText = "";
-        quizContainer.innerHTML = "";
-        document.getElementById('close-btn').style.display = "none";
-
         if(tile.type === "stadium") {
-            const quiz = GAME_DATA.quizzes[Math.floor(Math.random() * GAME_DATA.quizzes.length)];
-            content.innerText = `歡迎來到主場！通過挑戰即可獲得獎勵：\n\n${quiz.q}`;
-            quiz.options.forEach((opt, i) => {
-                const btn = document.createElement('button');
-                btn.className = "quiz-option";
-                btn.innerText = opt;
-                btn.onclick = () => {
-                    if(i === quiz.ans) {
-                        alert("正確答案！獲得了 " + quiz.reward.name);
-                        if(quiz.reward.type === 'player') players.push(quiz.reward.name);
-                        else cheers.push(quiz.reward.name);
-                    } else {
-                        alert("可惜答錯了，下次再加油！");
-                    }
-                    closeModal();
+            const q = QUIZZES[Math.floor(Math.random() * QUIZZES.length)];
+            content.innerHTML = `<p>挑戰題：</p><p>${q.q}</p>`;
+            q.options.forEach((opt, idx) => {
+                const b = document.createElement('button');
+                b.className = "opt-btn";
+                b.innerText = opt;
+                b.onclick = () => {
+                    if(idx === q.ans) {
+                        alert("正確！獲得本土球員");
+                        p.team.push("球員");
+                    } else { alert("答錯了！"); }
+                    nextTurn();
                 };
-                quizContainer.appendChild(btn);
+                quizBox.appendChild(b);
             });
-        } else if(tile.type === "event") {
-            const ev = GAME_DATA.events[Math.floor(Math.random() * GAME_DATA.events.length)];
-            title.innerText = "突發事件：" + ev.title;
-            content.innerText = ev.desc;
-            money += ev.money;
-            document.getElementById('close-btn').style.display = "block";
-        } else if(tile.type === "draft") {
-            content.innerText = "花費 300 資金，可以隨機招募一名洋將。是否招募？";
-            const btn = document.createElement('button');
-            btn.className = "quiz-option";
-            btn.innerText = "支付 300 招募";
-            btn.onclick = () => {
-                if(money >= 300) {
-                    money -= 300;
-                    players.push("隨機洋將");
-                    alert("成功招募！");
-                } else {
-                    alert("資金不足！");
-                }
-                closeModal();
-            };
-            quizContainer.appendChild(btn);
-            document.getElementById('close-btn').style.display = "block";
-        } else if(tile.type === "fa") {
-            content.innerText = "自由球員市場：為了保住核心球員，必須支付 200 資金。";
-            money -= 200;
-            document.getElementById('close-btn').style.display = "block";
+        } else if(tile.type === "chance" || tile.type === "fate") {
+            const card = CARDS[Math.floor(Math.random() * CARDS.length)];
+            content.innerHTML = `<h4>${card.title}</h4><p>${card.desc}</p>`;
+            p.money += card.money;
+            document.getElementById('m-close').style.display = "block";
         } else {
-            content.innerText = "這是一個休息區。";
-            document.getElementById('close-btn').style.display = "block";
+            content.innerText = "安全過關。";
+            document.getElementById('m-close').style.display = "block";
         }
 
-        modal.style.display = "block";
-        overlay.style.display = "block";
-        updatePlayerUI();
+        m.style.display = "block";
+        over.style.display = "block";
+    }
+
+    function nextTurn() {
+        closeModal();
+        turn = (turn + 1) % 4;
+        updateUI();
     }
 
     function closeModal() {
         document.getElementById('modal').style.display = "none";
         document.getElementById('overlay').style.display = "none";
-        updatePlayerUI();
+        document.getElementById('m-close').style.display = "none";
+        if(document.getElementById('m-quiz').innerHTML === "") {
+            turn = (turn + 1) % 4;
+            updateUI();
+        }
     }
 
-    window.onload = initMap;
+    window.onload = init;
 </script>
-
 </body>
 </html>
