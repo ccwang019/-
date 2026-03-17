@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>台灣棒球知識大富翁 - 華語學習版</title>
+    <style>
+        :root {
+            --primary-bg: #1a2a3a;
+            --tile-bg: #ffffff;
+            --text-dark: #333;
+            --money-color: #f1c40f;
+            --team-color: #e74c3c;
+            /* 球隊色系 */
+            --color-dragons: #ff0000; /* 味全龍 */
+            --color-lions: #ff8c00;   /* 統一獅 */
+            --color-brothers: #ffe600;/* 中信兄弟 */
+            --color-monkeys: #800000; /* 樂天桃猿 */
+            --color-guardians: #004a9c;/* 富邦悍將 */
+        }
+
+        body {
+            font-family: 'PingFang TC', 'Microsoft JhengHei', sans-serif;
+            background-color: var(--primary-bg);
+            color: white;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        /* 頂部狀態欄 */
+        #status-bar {
+            width: 100%;
+            background: rgba(0,0,0,0.8);
+            padding: 15px;
+            display: flex;
+            justify-content: space-around;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            border-bottom: 3px solid var(--money-color);
+        }
+
+        .stat-item { font-size: 1.2rem; font-weight: bold; }
+        .stat-item span { color: var(--money-color); }
+
+        /* 遊戲地圖容器 */
+        #game-container {
+            position: relative;
+            width: 90vw;
+            max-width: 800px;
+            height: 90vw;
+            max-height: 800px;
+            margin: 20px auto;
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            grid-template-rows: repeat(5, 1fr);
+            gap: 5px;
+        }
+
+        .tile {
+            background: var(--tile-bg);
+            color: var(--text-dark);
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8rem;
+            font-weight: bold;
+            text-align: center;
+            position: relative;
+            transition: transform 0.2s;
+            border: 2px solid transparent;
+        }
+
+        .tile i { font-size: 1.5rem; margin-bottom: 5px; }
+
+        /* 棋子樣式 */
+        #player {
+            width: 40px;
+            height: 40px;
+            background: #2ecc71;
+            border: 3px solid white;
+            border-radius: 50%;
+            position: absolute;
+            z-index: 50;
+            transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            box-shadow: 0 0 15px rgba(46, 204, 113, 0.8);
+        }
+
+        /* 彈窗樣式 */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 85%;
+            max-width: 500px;
+            background: white;
+            color: #333;
+            padding: 25px;
+            border-radius: 15px;
+            z-index: 1000;
+            box-shadow: 0 0 30px rgba(0,0,0,0.5);
+        }
+
+        .overlay {
+            display: none;
+            position: fixed;
+            top:0; left:0; width:100%; height:100%;
+            background: rgba(0,0,0,0.7);
+            z-index: 999;
+        }
+
+        .quiz-option {
+            display: block;
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            cursor: pointer;
+            text-align: left;
+        }
+
+        .quiz-option:hover { background: #f0f0f0; }
+
+        #dice-btn {
+            padding: 15px 40px;
+            font-size: 1.5rem;
+            background: var(--money-color);
+            border: none;
+            border-radius: 30px;
+            cursor: pointer;
+            font-weight: bold;
+            margin: 20px;
+        }
+
+        #dice-btn:disabled { background: #7f8c8d; }
+
+        /* 球隊專屬樣式 */
+        .dragons { border-color: var(--color-dragons) !important; color: var(--color-dragons); }
+        .lions { border-color: var(--color-lions) !important; color: var(--color-lions); }
+        .brothers { border-color: var(--color-brothers) !important; color: var(--color-brothers); }
+        .monkeys { border-color: var(--color-monkeys) !important; color: var(--color-monkeys); }
+        .guardians { border-color: var(--color-guardians) !important; color: var(--color-guardians); }
+    </style>
+</head>
+<body>
+
+<div id="status-bar">
+    <div class="stat-item">資金: <span id="money">1000</span></div>
+    <div class="stat-item">球員: <span id="players-count">0</span></div>
+    <div class="stat-item">啦啦隊: <span id="cheers-count">0</span></div>
+</div>
+
+<div id="game-container">
+    <div id="player"></div>
+</div>
+
+<button id="dice-btn" onclick="rollDice()">投球 (擲骰子)</button>
+
+<div class="overlay" id="overlay"></div>
+
+<div class="modal" id="modal">
+    <h2 id="modal-title">標題</h2>
+    <div id="modal-content">內容</div>
+    <div id="quiz-container"></div>
+    <button id="close-btn" style="display:none; margin-top:15px;" onclick="closeModal()">關閉</button>
+</div>
+
+<script>
+    // --- 遊戲資料設定 ---
+    const GAME_DATA = {
+        tiles: [
+            { id: 0, name: "起點", type: "start", icon: "🏠" },
+            { id: 1, name: "天母球場", type: "stadium", team: "dragons", icon: "🐉" },
+            { id: 2, name: "選秀會", type: "draft", icon: "🏆" },
+            { id: 3, name: "突發事件", type: "event", icon: "❓" },
+            { id: 4, name: "新莊球場", type: "stadium", team: "guardians", icon: "🛡️" },
+            { id: 5, name: "自由球員", type: "fa", icon: "💸" },
+            { id: 6, name: "桃園球場", type: "stadium", team: "monkeys", icon: "🐒" },
+            { id: 7, name: "突發事件", type: "event", icon: "❓" },
+            { id: 8, name: "洲際球場", type: "stadium", team: "brothers", icon: "🐘" },
+            { id: 9, name: "選秀會", type: "draft", icon: "🏆" },
+            { id: 10, name: "台南球場", type: "stadium", team: "lions", icon: "🦁" },
+            { id: 11, name: "突發事件", type: "event", icon: "❓" },
+            { id: 12, name: "自由球員", type: "fa", icon: "💸" },
+            { id: 13, name: "澄清湖", type: "stadium", team: "dragons", icon: "⚾" },
+            { id: 14, name: "轉播金", type: "income", icon: "💰" },
+            { id: 15, name: "突發事件", type: "event", icon: "❓" }
+        ],
+        quizzes: [
+            {
+                type: "term",
+                q: "當投手投出的球不小心擊中打者身體時，這稱為？",
+                options: ["觸身球", "全壘打", "變速球", "盜壘成功"],
+                ans: 0,
+                reward: { type: 'player', name: '本土投手' }
+            },
+            {
+                type: "cloze",
+                q: "這名洋將球速極快，___控球極為精準，是球隊奪冠的關鍵。",
+                options: ["反而", "不但...而且", "雖然", "可是"],
+                ans: 1,
+                reward: { type: 'player', name: '強力洋投' }
+            },
+            {
+                type: "summary",
+                q: "將標題「中信兄弟隊在今天的比賽中雖然一度落後五分，但最後靠著連續的安打成功反敗為勝」簡寫，何者最精鍊？",
+                options: ["兄弟五分落後逆轉勝", "今天比賽兄弟打安打", "兄弟隊落後五分", "落後五分後兄弟隊贏了"],
+                ans: 0,
+                reward: { type: 'cheer', name: '人氣啦啦隊' }
+            }
+        ],
+        events: [
+            { title: "應援曲爆紅", desc: "洗腦旋律讓球迷大增！資金增加 300", money: 300 },
+            { title: "洋將受傷", desc: "主力球員需要休養，支付醫療費 200", money: -200 },
+            { title: "全壘打大賽", desc: "獲得額外獎金 150", money: 150 }
+        ]
+    };
+
+    // --- 遊戲狀態 ---
+    let playerPos = 0;
+    let money = 1000;
+    let players = [];
+    let cheers = [];
+
+    // --- 初始化地圖 ---
+    function initMap() {
+        const container = document.getElementById('game-container');
+        // 大富翁 5x5 中間留空的邏輯
+        const tileOrder = [0, 1, 2, 3, 4, 15, null, null, null, 5, 14, null, null, null, 6, 13, 12, 11, 10, 9];
+        // 為了簡化這裡改用 4x4 環狀或自定義座標，此處採用線性生成並定位
+        GAME_DATA.tiles.forEach((tile, index) => {
+            const el = document.createElement('div');
+            el.className = `tile ${tile.team || ''}`;
+            el.innerHTML = `<i>${tile.icon}</i>${tile.name}`;
+            el.id = `tile-${index}`;
+            
+            // 簡單定位邏輯 (環形)
+            let row, col;
+            if(index < 5) { row = 1; col = index + 1; }
+            else if(index < 8) { row = index - 3; col = 5; }
+            else if(index < 12) { row = 5; col = 13 - index; }
+            else { row = 17 - index; col = 1; }
+
+            el.style.gridRow = row;
+            el.style.gridColumn = col;
+            container.appendChild(el);
+        });
+        updatePlayerUI();
+    }
+
+    // --- 遊戲動作 ---
+    function rollDice() {
+        const steps = Math.floor(Math.random() * 6) + 1;
+        document.getElementById('dice-btn').disabled = true;
+        
+        let count = 0;
+        const timer = setInterval(() => {
+            playerPos = (playerPos + 1) % GAME_DATA.tiles.length;
+            updatePlayerUI();
+            count++;
+            if(count >= steps) {
+                clearInterval(timer);
+                handleLanding();
+                document.getElementById('dice-btn').disabled = false;
+            }
+        }, 300);
+    }
+
+    function updatePlayerUI() {
+        const currentTile = document.getElementById(`tile-${playerPos}`);
+        const pMarker = document.getElementById('player');
+        const rect = currentTile.getBoundingClientRect();
+        const containerRect = document.getElementById('game-container').getBoundingClientRect();
+        
+        pMarker.style.top = (currentTile.offsetTop + 10) + 'px';
+        pMarker.style.left = (currentTile.offsetLeft + 10) + 'px';
+        
+        document.getElementById('money').innerText = money;
+        document.getElementById('players-count').innerText = players.length;
+        document.getElementById('cheers-count').innerText = cheers.length;
+    }
+
+    function handleLanding() {
+        const tile = GAME_DATA.tiles[playerPos];
+        const modal = document.getElementById('modal');
+        const overlay = document.getElementById('overlay');
+        const title = document.getElementById('modal-title');
+        const content = document.getElementById('modal-content');
+        const quizContainer = document.getElementById('quiz-container');
+        
+        title.innerText = tile.name;
+        content.innerText = "";
+        quizContainer.innerHTML = "";
+        document.getElementById('close-btn').style.display = "none";
+
+        if(tile.type === "stadium") {
+            const quiz = GAME_DATA.quizzes[Math.floor(Math.random() * GAME_DATA.quizzes.length)];
+            content.innerText = `歡迎來到主場！通過挑戰即可獲得獎勵：\n\n${quiz.q}`;
+            quiz.options.forEach((opt, i) => {
+                const btn = document.createElement('button');
+                btn.className = "quiz-option";
+                btn.innerText = opt;
+                btn.onclick = () => {
+                    if(i === quiz.ans) {
+                        alert("正確答案！獲得了 " + quiz.reward.name);
+                        if(quiz.reward.type === 'player') players.push(quiz.reward.name);
+                        else cheers.push(quiz.reward.name);
+                    } else {
+                        alert("可惜答錯了，下次再加油！");
+                    }
+                    closeModal();
+                };
+                quizContainer.appendChild(btn);
+            });
+        } else if(tile.type === "event") {
+            const ev = GAME_DATA.events[Math.floor(Math.random() * GAME_DATA.events.length)];
+            title.innerText = "突發事件：" + ev.title;
+            content.innerText = ev.desc;
+            money += ev.money;
+            document.getElementById('close-btn').style.display = "block";
+        } else if(tile.type === "draft") {
+            content.innerText = "花費 300 資金，可以隨機招募一名洋將。是否招募？";
+            const btn = document.createElement('button');
+            btn.className = "quiz-option";
+            btn.innerText = "支付 300 招募";
+            btn.onclick = () => {
+                if(money >= 300) {
+                    money -= 300;
+                    players.push("隨機洋將");
+                    alert("成功招募！");
+                } else {
+                    alert("資金不足！");
+                }
+                closeModal();
+            };
+            quizContainer.appendChild(btn);
+            document.getElementById('close-btn').style.display = "block";
+        } else if(tile.type === "fa") {
+            content.innerText = "自由球員市場：為了保住核心球員，必須支付 200 資金。";
+            money -= 200;
+            document.getElementById('close-btn').style.display = "block";
+        } else {
+            content.innerText = "這是一個休息區。";
+            document.getElementById('close-btn').style.display = "block";
+        }
+
+        modal.style.display = "block";
+        overlay.style.display = "block";
+        updatePlayerUI();
+    }
+
+    function closeModal() {
+        document.getElementById('modal').style.display = "none";
+        document.getElementById('overlay').style.display = "none";
+        updatePlayerUI();
+    }
+
+    window.onload = initMap;
+</script>
+
+</body>
+</html>
